@@ -3,6 +3,9 @@ const { ACCESS_CONFIG_URL, OFFLINE_GRACE_MS } = require('./config');
 const DEFAULT_BLOCKED_MESSAGE =
   'Support has expired. Contact Developer Pac.';
 
+const DEFAULT_CONTACT_MESSAGE =
+  'Contact Developer Pac to activate this device.';
+
 const DEFAULT_OFFLINE_MESSAGE =
   'Unable to verify access. Check your internet connection and try again. Contact Developer Pac.';
 
@@ -10,7 +13,48 @@ function isPlaceholderUrl(url) {
   return !url || url.includes('YOUR_GITHUB_USER');
 }
 
-async function fetchRemoteAccess(url) {
+function evaluateUserAccess(data, machineId) {
+  if (!machineId) {
+    return {
+      allowed: false,
+      message: DEFAULT_CONTACT_MESSAGE,
+      reason: 'no_machine_id',
+    };
+  }
+
+  const users = data.users && typeof data.users === 'object' ? data.users : {};
+  const entry = users[machineId];
+
+  if (!entry) {
+    return {
+      allowed: false,
+      message:
+        (typeof data.contactMessage === 'string' && data.contactMessage.trim()) ||
+        DEFAULT_CONTACT_MESSAGE,
+      reason: 'not_registered',
+    };
+  }
+
+  if (entry.allowed === false) {
+    return {
+      allowed: false,
+      message:
+        (typeof entry.message === 'string' && entry.message.trim()) ||
+        (typeof data.message === 'string' && data.message.trim()) ||
+        DEFAULT_BLOCKED_MESSAGE,
+      reason: 'blocked',
+    };
+  }
+
+  return {
+    allowed: true,
+    message: '',
+    reason: 'ok',
+    name: entry.name || null,
+  };
+}
+
+async function fetchRemoteConfig(url) {
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), 10000);
 
@@ -25,14 +69,7 @@ async function fetchRemoteAccess(url) {
       throw new Error(`Remote config returned HTTP ${res.status}`);
     }
 
-    const data = await res.json();
-    const allowed = data.active !== false;
-    const message =
-      typeof data.message === 'string' && data.message.trim()
-        ? data.message.trim()
-        : DEFAULT_BLOCKED_MESSAGE;
-
-    return { allowed, message, minVersion: data.minVersion || null };
+    return res.json();
   } catch (err) {
     clearTimeout(timeout);
     throw err;
@@ -41,50 +78,94 @@ async function fetchRemoteAccess(url) {
 
 /**
  * @param {import('electron-store')} store
- * @param {{ skip?: boolean }} options
+ * @param {{ skip?: boolean, machineId?: string | null }} options
  */
 async function checkAccess(store, options = {}) {
   if (options.skip) {
-    return { allowed: true, message: '', source: 'skipped' };
+    return { allowed: true, message: '', source: 'skipped', reason: 'skipped' };
   }
 
-  let remote;
+  const machineId = options.machineId ?? null;
+
+  if (!machineId) {
+    return {
+      allowed: false,
+      message: DEFAULT_CONTACT_MESSAGE,
+      source: 'local',
+      reason: 'no_machine_id',
+      needsActivation: true,
+    };
+  }
+
+  let data;
   try {
-    remote = await fetchRemoteAccess(ACCESS_CONFIG_URL);
+    data = await fetchRemoteConfig(ACCESS_CONFIG_URL);
   } catch (err) {
     const cached = store.get('accessCache');
     const cacheAge = cached?.checkedAt ? Date.now() - cached.checkedAt : Infinity;
+    const cacheValid =
+      cached &&
+      cached.machineId === machineId &&
+      cacheAge < OFFLINE_GRACE_MS;
 
-    if (cached && cacheAge < OFFLINE_GRACE_MS) {
+    if (cacheValid) {
       return {
         allowed: cached.allowed,
         message: cached.message,
         source: 'cache',
         offline: true,
+        reason: cached.reason,
+        machineId,
       };
     }
 
     return {
       allowed: false,
-      message: cached?.allowed
-        ? DEFAULT_OFFLINE_MESSAGE
-        : cached?.message || DEFAULT_OFFLINE_MESSAGE,
+      message: DEFAULT_OFFLINE_MESSAGE,
       source: 'offline',
       error: err.message,
+      reason: 'offline',
+      machineId,
     };
   }
 
+  if (data.active === false) {
+    const message =
+      (typeof data.message === 'string' && data.message.trim()) ||
+      DEFAULT_BLOCKED_MESSAGE;
+    store.set('accessCache', {
+      allowed: false,
+      message,
+      checkedAt: Date.now(),
+      machineId,
+      reason: 'global_off',
+    });
+    return {
+      allowed: false,
+      message,
+      source: 'remote',
+      reason: 'global_off',
+      machineId,
+    };
+  }
+
+  const userResult = evaluateUserAccess(data, machineId);
+
   store.set('accessCache', {
-    allowed: remote.allowed,
-    message: remote.message,
+    allowed: userResult.allowed,
+    message: userResult.message,
     checkedAt: Date.now(),
+    machineId,
+    reason: userResult.reason,
   });
 
   return {
-    allowed: remote.allowed,
-    message: remote.message,
+    allowed: userResult.allowed,
+    message: userResult.message,
     source: 'remote',
-    minVersion: remote.minVersion,
+    reason: userResult.reason,
+    machineId,
+    userName: userResult.name,
   };
 }
 
@@ -100,4 +181,5 @@ module.exports = {
   shouldSkipAccessCheck,
   isPlaceholderUrl,
   ACCESS_CONFIG_URL,
+  DEFAULT_CONTACT_MESSAGE,
 };

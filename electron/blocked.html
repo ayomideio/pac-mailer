@@ -14,57 +14,136 @@
         display: flex;
         align-items: center;
         justify-content: center;
-        padding: 32px;
+        padding: 28px;
       }
-      .card {
-        text-align: center;
-        max-width: 400px;
-      }
-      .icon {
-        font-size: 48px;
-        margin-bottom: 16px;
-      }
-      h1 {
-        font-size: 20px;
-        margin-bottom: 12px;
-      }
-      p {
-        color: #8b93a7;
-        line-height: 1.6;
-        font-size: 14px;
-        margin-bottom: 24px;
-      }
-      .developer {
-        color: #4f7cff;
+      .card { text-align: center; max-width: 440px; width: 100%; }
+      .icon { font-size: 48px; margin-bottom: 16px; }
+      h1 { font-size: 20px; margin-bottom: 12px; }
+      p { color: #8b93a7; line-height: 1.6; font-size: 14px; margin-bottom: 16px; }
+      .developer { color: #4f7cff; font-weight: 600; }
+      label {
+        display: block;
+        font-size: 11px;
         font-weight: 600;
+        color: #8b93a7;
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
+        margin-bottom: 6px;
+        text-align: left;
       }
+      .id-row {
+        display: flex;
+        gap: 8px;
+        margin-bottom: 20px;
+      }
+      input {
+        flex: 1;
+        background: #1e222d;
+        border: 1px solid #2a3040;
+        border-radius: 6px;
+        padding: 10px 12px;
+        color: #e8eaef;
+        font-family: 'SF Mono', Consolas, monospace;
+        font-size: 11px;
+        text-align: left;
+      }
+      .status {
+        font-size: 13px;
+        margin-bottom: 16px;
+        min-height: 20px;
+        color: #ff453a;
+      }
+      .actions { display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; }
       button {
         background: #4f7cff;
         color: #fff;
         border: none;
-        padding: 10px 24px;
+        padding: 10px 20px;
         border-radius: 6px;
         font-size: 14px;
         font-weight: 600;
         cursor: pointer;
       }
       button:hover { background: #6b92ff; }
+      button:disabled { opacity: 0.5; cursor: not-allowed; }
+      .btn-secondary {
+        background: #1e222d;
+        color: #e8eaef;
+        border: 1px solid #2a3040;
+      }
+      .btn-secondary:hover { border-color: #8b93a7; }
+      #machine-section { display: none; }
+      #machine-section.visible { display: block; }
     </style>
   </head>
   <body>
     <div class="card">
       <div class="icon">🔒</div>
       <h1>Access Unavailable</h1>
-      <p id="message">Support has expired. Contact Developer Pac.</p>
-      <p>— <span class="developer">Developer Pac</span></p>
-      <button type="button" id="quit">Close</button>
+      <p id="message">Contact Developer Pac to activate this device.</p>
+
+      <div id="machine-section">
+        <label>Your Machine ID</label>
+        <div class="id-row">
+          <input type="text" id="machine-id" readonly />
+          <button type="button" class="btn-secondary" id="copy">Copy</button>
+        </div>
+      </div>
+
+      <p class="status" id="retry-status"></p>
+
+      <div class="actions">
+        <button type="button" id="retry">Check Access</button>
+        <button type="button" class="btn-secondary" id="quit">Close</button>
+      </div>
+      <p style="margin-top: 20px; font-size: 13px">— <span class="developer">Developer Pac</span></p>
     </div>
     <script>
+      const api = window.pacMailer;
       const params = new URLSearchParams(window.location.search);
       const msg = params.get('m');
+      const mid = params.get('id');
+
       if (msg) document.getElementById('message').textContent = decodeURIComponent(msg);
+
+      if (mid) {
+        document.getElementById('machine-section').classList.add('visible');
+        document.getElementById('machine-id').value = decodeURIComponent(mid);
+      }
+
+      document.getElementById('copy').addEventListener('click', async () => {
+        const id = document.getElementById('machine-id').value;
+        if (id) {
+          await navigator.clipboard.writeText(id);
+          document.getElementById('retry-status').textContent = 'Copied to clipboard.';
+          document.getElementById('retry-status').style.color = '#34c759';
+        }
+      });
+
+      document.getElementById('retry').addEventListener('click', async () => {
+        const btn = document.getElementById('retry');
+        const status = document.getElementById('retry-status');
+        btn.disabled = true;
+        status.textContent = 'Checking…';
+        status.style.color = '#8b93a7';
+        try {
+          const result = await api.recheckAccess();
+          if (result.allowed) {
+            status.textContent = 'Access granted! Opening app…';
+            status.style.color = '#34c759';
+          } else {
+            status.textContent = result.message;
+            status.style.color = '#ff453a';
+            btn.disabled = false;
+          }
+        } catch (e) {
+          status.textContent = e.message || 'Check failed.';
+          btn.disabled = false;
+        }
+      });
+
       document.getElementById('quit').addEventListener('click', () => {
-        if (window.pacMailer?.quit) window.pacMailer.quit();
+        if (api?.quit) api.quit();
         else window.close();
       });
     </script>

@@ -4,6 +4,7 @@ const fs = require('fs');
 const nodemailer = require('nodemailer');
 const Store = require('electron-store');
 const { checkAccess, shouldSkipAccessCheck } = require('./access');
+const { getMachineId, hasMachineId, generateMachineId } = require('./machineId');
 
 const store = new Store({
   defaults: {
@@ -18,12 +19,13 @@ const store = new Store({
 const isDev = !app.isPackaged;
 let mainWindow = null;
 let blockedWindow = null;
+let activationWindow = null;
 let accessAllowed = false;
 
-function showBlockedWindow(message) {
-  blockedWindow = new BrowserWindow({
-    width: 460,
-    height: 340,
+function gateWindowOptions(width, height) {
+  return {
+    width,
+    height,
     resizable: false,
     maximizable: false,
     minimizable: true,
@@ -35,11 +37,38 @@ function showBlockedWindow(message) {
       nodeIntegration: false,
       sandbox: true,
     },
+  };
+}
+
+function showActivationWindow() {
+  if (activationWindow) return;
+
+  activationWindow = new BrowserWindow({
+    ...gateWindowOptions(500, 520),
   });
 
-  blockedWindow.loadFile(path.join(__dirname, 'blocked.html'), {
-    query: { m: message },
+  activationWindow.loadFile(path.join(__dirname, 'activation.html'));
+
+  activationWindow.on('closed', () => {
+    activationWindow = null;
+    if (!accessAllowed) app.quit();
   });
+}
+
+function showBlockedWindow(message, machineId) {
+  if (blockedWindow) {
+    blockedWindow.focus();
+    return;
+  }
+
+  blockedWindow = new BrowserWindow({
+    ...gateWindowOptions(480, machineId ? 400 : 340),
+  });
+
+  const query = { m: message };
+  if (machineId) query.id = machineId;
+
+  blockedWindow.loadFile(path.join(__dirname, 'blocked.html'), { query });
 
   blockedWindow.on('closed', () => {
     blockedWindow = null;
@@ -116,20 +145,55 @@ function addHistory(entry) {
   return history.slice(0, 100);
 }
 
-app.whenReady().then(async () => {
+async function tryLaunchMainApp() {
   const skip = shouldSkipAccessCheck(isDev);
-  const access = await checkAccess(store, { skip });
+
+  if (!skip && !hasMachineId(store)) {
+    showActivationWindow();
+    return false;
+  }
+
+  const machineId = getMachineId(store);
+  const access = await checkAccess(store, { skip, machineId });
 
   if (!access.allowed) {
-    showBlockedWindow(access.message);
-    return;
+    if (activationWindow) {
+      activationWindow.close();
+      activationWindow = null;
+    }
+    showBlockedWindow(access.message, machineId);
+    return false;
   }
 
   accessAllowed = true;
-  createWindow();
 
-  app.on('activate', () => {
-    if (!accessAllowed) return;
+  if (blockedWindow) {
+    blockedWindow.close();
+    blockedWindow = null;
+  }
+  if (activationWindow) {
+    activationWindow.close();
+    activationWindow = null;
+  }
+
+  if (!mainWindow) {
+    createWindow();
+  } else {
+    mainWindow.show();
+    mainWindow.focus();
+  }
+
+  return true;
+}
+
+app.whenReady().then(async () => {
+  await tryLaunchMainApp();
+
+  app.on('activate', async () => {
+    if (!accessAllowed) {
+      await tryLaunchMainApp();
+      return;
+    }
     if (BrowserWindow.getAllWindows().length === 0) createWindow();
   });
 });
@@ -141,6 +205,32 @@ app.on('window-all-closed', () => {
 // --- IPC handlers ---
 
 ipcMain.on('app:quit', () => app.quit());
+
+ipcMain.handle('machine:get', () => getMachineId(store));
+
+ipcMain.handle('machine:generate', () => generateMachineId(store));
+
+ipcMain.handle('access:recheck', async () => {
+  const skip = shouldSkipAccessCheck(isDev);
+  const machineId = getMachineId(store);
+
+  if (!skip && !machineId) {
+    return {
+      allowed: false,
+      message: 'Generate a Machine ID first.',
+      machineId: null,
+      reason: 'no_machine_id',
+    };
+  }
+
+  const access = await checkAccess(store, { skip, machineId });
+
+  if (access.allowed) {
+    await tryLaunchMainApp();
+  }
+
+  return access;
+});
 
 ipcMain.handle('app:get-meta', () => ({
   name: 'Pac Mailer',

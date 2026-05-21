@@ -55,51 +55,57 @@ Installers are written to the `release/` folder.
 
 For Gmail with 2FA enabled, create an [App Password](https://myaccount.google.com/apppasswords) and use it instead of your regular password.
 
-## Remote access control (GitHub JSON)
+## Remote access control (GitHub JSON + Machine ID)
 
-Pac Mailer checks a JSON file on GitHub at startup. You can disable the app for all users anytime by editing that file.
+Each install generates a **Machine ID** (UUID). Users send it to you; you add it to `access.json` on GitHub. If the ID is not listed, they see *Contact Developer Pac*.
 
-### 1. Create a GitHub repo
+### First launch (user)
 
-Example: `pac-mailer-access` (public is fine — the file only contains on/off + message).
+1. Click **Generate Machine ID**
+2. Copy the ID and send it to Developer Pac
+3. After you add it on GitHub, click **Check Access**
 
-Add `access.json`:
+### Your `access.json` on GitHub
+
+Use `access.json.example` as a template:
 
 ```json
 {
   "active": true,
-  "message": "Support has expired. Contact Developer Pac."
+  "message": "Support has expired. Contact Developer Pac.",
+  "contactMessage": "Contact Developer Pac to activate this device.",
+  "users": {
+    "550e8400-e29b-41d4-a716-446655440000": {
+      "allowed": true,
+      "name": "Client A"
+    }
+  }
 }
 ```
 
-Use `access.json.example` in this project as a template.
-
-### 2. Get the raw URL
-
-On GitHub: open `access.json` → **Raw** → copy the URL, e.g.
-
-`https://raw.githubusercontent.com/youruser/pac-mailer-access/main/access.json`
-
-### 3. Point the app at it
-
-Edit `electron/config.js` and replace `YOUR_GITHUB_USER` with your repo path, or set:
-
-```bash
-export ACCESS_CONFIG_URL="https://raw.githubusercontent.com/youruser/pac-mailer-access/main/access.json"
-```
-
-### 4. Block users
-
-Set `"active": false` in `access.json`, commit, and push. Users see your `message` and cannot use the app (on next online launch).
-
 | Field | Meaning |
 |-------|---------|
-| `active` | `true` = app runs, `false` = blocked |
-| `message` | Shown when blocked (optional; default mentions Developer Pac) |
+| `active` | `false` = block **everyone** immediately |
+| `contactMessage` | Shown when Machine ID is not in `users` |
+| `users` | Map of Machine ID → access |
+| `users[id].allowed` | `true` = can use app, `false` = revoke that user |
+| `users[id].name` | Optional label for your reference |
 
-**Offline behavior:** If the check cannot reach GitHub, users who were previously allowed can run for up to **7 days** using the cached result. After that, they must be online to verify access.
+**Activate a user:** add their Machine ID under `users` with `"allowed": true`, commit, push.
 
-**Development:** Access check is skipped in dev while the URL still contains the `YOUR_GITHUB_USER` placeholder. Use `ENFORCE_ACCESS=1 npm run dev` to test blocking locally.
+**Revoke one user:** set their entry to `"allowed": false` or remove the key.
+
+**Count users:** number of keys in `users` (manual; each key is one install).
+
+### Setup
+
+1. Host `access.json` in a GitHub repo (public is fine).
+2. Copy the **raw** URL into `electron/config.js` (not the `/blob/` page URL).
+3. User count = entries you add to `users`.
+
+**Offline:** Allowed users can run up to **7 days** offline using the last successful check.
+
+**Development:** Skipped while the config URL contains `YOUR_GITHUB_USER`. Use `ENFORCE_ACCESS=1 npm run dev` to test with your real GitHub file.
 
 ## Project structure
 

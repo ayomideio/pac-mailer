@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Pac Mailer — Activate</title>
+    <style>
+      * { box-sizing: border-box; margin: 0; padding: 0; }
+      body {
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        background: #0f1117;
+        color: #e8eaef;
+        height: 100vh;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 28px;
+      }
+      .card { max-width: 440px; width: 100%; }
+      .icon { font-size: 40px; margin-bottom: 12px; }
+      h1 { font-size: 20px; margin-bottom: 8px; }
+      .sub {
+        color: #8b93a7;
+        font-size: 13px;
+        line-height: 1.6;
+        margin-bottom: 20px;
+      }
+      .developer { color: #4f7cff; font-weight: 600; }
+      label {
+        display: block;
+        font-size: 11px;
+        font-weight: 600;
+        color: #8b93a7;
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
+        margin-bottom: 6px;
+      }
+      .id-row {
+        display: flex;
+        gap: 8px;
+        margin-bottom: 12px;
+      }
+      input {
+        flex: 1;
+        background: #1e222d;
+        border: 1px solid #2a3040;
+        border-radius: 6px;
+        padding: 10px 12px;
+        color: #e8eaef;
+        font-family: 'SF Mono', Consolas, monospace;
+        font-size: 12px;
+      }
+      .status {
+        font-size: 13px;
+        padding: 10px 12px;
+        border-radius: 6px;
+        margin-bottom: 16px;
+        display: none;
+      }
+      .status.err {
+        display: block;
+        background: rgba(255, 69, 58, 0.12);
+        color: #ff453a;
+        border: 1px solid rgba(255, 69, 58, 0.25);
+      }
+      .status.ok {
+        display: block;
+        background: rgba(52, 199, 89, 0.12);
+        color: #34c759;
+        border: 1px solid rgba(52, 199, 89, 0.25);
+      }
+      .actions { display: flex; flex-wrap: wrap; gap: 8px; }
+      button {
+        padding: 10px 18px;
+        border-radius: 6px;
+        font-size: 13px;
+        font-weight: 600;
+        cursor: pointer;
+        border: none;
+      }
+      .btn-primary { background: #4f7cff; color: #fff; }
+      .btn-primary:hover { background: #6b92ff; }
+      .btn-primary:disabled { opacity: 0.5; cursor: not-allowed; }
+      .btn-secondary {
+        background: #1e222d;
+        color: #e8eaef;
+        border: 1px solid #2a3040;
+      }
+      .btn-secondary:hover { border-color: #8b93a7; }
+      .steps {
+        margin: 16px 0 20px;
+        padding-left: 18px;
+        color: #8b93a7;
+        font-size: 13px;
+        line-height: 1.8;
+      }
+      #id-section { display: none; }
+      #id-section.visible { display: block; }
+    </style>
+  </head>
+  <body>
+    <div class="card">
+      <div class="icon">📬</div>
+      <h1>Activate Pac Mailer</h1>
+      <p class="sub">
+        Generate a Machine ID for this computer, then send it to
+        <span class="developer">Developer Pac</span> for activation.
+      </p>
+
+      <ol class="steps">
+        <li>Click <strong>Generate Machine ID</strong></li>
+        <li>Copy the ID and send it to Developer Pac</li>
+        <li>After it is added on GitHub, click <strong>Check Access</strong></li>
+      </ol>
+
+      <div id="id-section">
+        <label>Your Machine ID</label>
+        <div class="id-row">
+          <input type="text" id="machine-id" readonly />
+          <button type="button" class="btn-secondary" id="copy">Copy</button>
+        </div>
+      </div>
+
+      <div class="status" id="status"></div>
+
+      <div class="actions">
+        <button type="button" class="btn-primary" id="generate">Generate Machine ID</button>
+        <button type="button" class="btn-secondary" id="check" style="display: none">Check Access</button>
+        <button type="button" class="btn-secondary" id="quit">Quit</button>
+      </div>
+    </div>
+
+    <script>
+      const api = window.pacMailer;
+      const idSection = document.getElementById('id-section');
+      const idInput = document.getElementById('machine-id');
+      const statusEl = document.getElementById('status');
+      const generateBtn = document.getElementById('generate');
+      const checkBtn = document.getElementById('check');
+
+      function setStatus(text, type) {
+        statusEl.textContent = text;
+        statusEl.className = 'status ' + (type || '');
+      }
+
+      function showId(id) {
+        idInput.value = id;
+        idSection.classList.add('visible');
+        generateBtn.textContent = 'Machine ID Generated';
+        generateBtn.disabled = true;
+        checkBtn.style.display = 'inline-block';
+      }
+
+      async function init() {
+        const id = await api.getMachineId();
+        if (id) showId(id);
+      }
+
+      generateBtn.addEventListener('click', async () => {
+        generateBtn.disabled = true;
+        setStatus('Generating…', '');
+        try {
+          const id = await api.generateMachineId();
+          showId(id);
+          setStatus(
+            'Send this Machine ID to Developer Pac. Then click Check Access after activation.',
+            'err'
+          );
+        } catch (e) {
+          setStatus(e.message || 'Failed to generate ID.', 'err');
+          generateBtn.disabled = false;
+        }
+      });
+
+      checkBtn.addEventListener('click', async () => {
+        checkBtn.disabled = true;
+        setStatus('Checking access…', '');
+        try {
+          const result = await api.recheckAccess();
+          if (result.allowed) {
+            setStatus('Access granted! Opening Pac Mailer…', 'ok');
+          } else {
+            setStatus(result.message, 'err');
+            checkBtn.disabled = false;
+          }
+        } catch (e) {
+          setStatus(e.message || 'Check failed.', 'err');
+          checkBtn.disabled = false;
+        }
+      });
+
+      document.getElementById('copy').addEventListener('click', async () => {
+        await navigator.clipboard.writeText(idInput.value);
+        setStatus('Machine ID copied to clipboard.', 'ok');
+        setTimeout(() => {
+          if (!checkBtn.disabled) setStatus('', '');
+        }, 2000);
+      });
+
+      document.getElementById('quit').addEventListener('click', () => api.quit());
+
+      init();
+    </script>
+  </body>
+</html>

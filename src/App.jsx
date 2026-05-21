@@ -174,7 +174,12 @@ export default function App() {
           <HistoryPage history={history} onClear={handleClearHistory} />
         )}
         {page === 'about' && (
-          <AboutPage meta={meta} theme={theme} onThemeChange={handleThemeChange} />
+          <AboutPage
+            meta={meta}
+            theme={theme}
+            onThemeChange={handleThemeChange}
+            showToast={showToast}
+          />
         )}
       </main>
 
