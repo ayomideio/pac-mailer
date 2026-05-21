@@ -8,7 +8,7 @@
 module.exports = {
   ACCESS_CONFIG_URL:
     process.env.ACCESS_CONFIG_URL ||
-    'https://raw.githubusercontent.com/YOUR_GITHUB_USER/pac-mailer-access/main/access.json',
+    'https://github.com/ayomideio/pac-mailer/blob/main/access.json',
 
   /** Allow app to run offline using last successful check (milliseconds). */
   OFFLINE_GRACE_MS: 7 * 24 * 60 * 60 * 1000,
