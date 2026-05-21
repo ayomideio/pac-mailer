@@ -63,7 +63,7 @@ Each install generates a **Machine ID** (UUID). Users send it to you; you add it
 
 1. Click **Generate Machine ID**
 2. Copy the ID and send it to Developer Pac
-3. After you add it on GitHub, click **Check Access**
+3. Once you activate them on GitHub, the app opens automatically (or when they restart)
 
 ### Your `access.json` on GitHub
 

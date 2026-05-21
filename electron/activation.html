@@ -110,7 +110,6 @@
       <ol class="steps">
         <li>Click <strong>Generate Machine ID</strong></li>
         <li>Copy the ID and send it to Developer Pac</li>
-        <li>After it is added on GitHub, click <strong>Check Access</strong></li>
       </ol>
 
       <div id="id-section">
@@ -125,7 +124,6 @@
 
       <div class="actions">
         <button type="button" class="btn-primary" id="generate">Generate Machine ID</button>
-        <button type="button" class="btn-secondary" id="check" style="display: none">Check Access</button>
         <button type="button" class="btn-secondary" id="quit">Quit</button>
       </div>
     </div>
@@ -136,7 +134,7 @@
       const idInput = document.getElementById('machine-id');
       const statusEl = document.getElementById('status');
       const generateBtn = document.getElementById('generate');
-      const checkBtn = document.getElementById('check');
+      let pollTimer = null;
 
       function setStatus(text, type) {
         statusEl.textContent = text;
@@ -148,12 +146,34 @@
         idSection.classList.add('visible');
         generateBtn.textContent = 'Machine ID Generated';
         generateBtn.disabled = true;
-        checkBtn.style.display = 'inline-block';
+        startAccessPoll();
+      }
+
+      async function tryAccess() {
+        try {
+          const result = await api.recheckAccess();
+          if (result.allowed) {
+            setStatus('Activation complete. Opening Pac Mailer…', 'ok');
+            if (pollTimer) clearInterval(pollTimer);
+          }
+          return result.allowed;
+        } catch (e) {
+          return false;
+        }
+      }
+
+      function startAccessPoll() {
+        if (pollTimer) clearInterval(pollTimer);
+        tryAccess();
+        pollTimer = setInterval(tryAccess, 20000);
       }
 
       async function init() {
         const id = await api.getMachineId();
-        if (id) showId(id);
+        if (id) {
+          showId(id);
+          setStatus('Send this Machine ID to Developer Pac.', 'err');
+        }
       }
 
       generateBtn.addEventListener('click', async () => {
@@ -162,30 +182,10 @@
         try {
           const id = await api.generateMachineId();
           showId(id);
-          setStatus(
-            'Send this Machine ID to Developer Pac. Then click Check Access after activation.',
-            'err'
-          );
+          setStatus('Send this Machine ID to Developer Pac.', 'err');
         } catch (e) {
           setStatus(e.message || 'Failed to generate ID.', 'err');
           generateBtn.disabled = false;
-        }
-      });
-
-      checkBtn.addEventListener('click', async () => {
-        checkBtn.disabled = true;
-        setStatus('Checking access…', '');
-        try {
-          const result = await api.recheckAccess();
-          if (result.allowed) {
-            setStatus('Access granted! Opening Pac Mailer…', 'ok');
-          } else {
-            setStatus(result.message, 'err');
-            checkBtn.disabled = false;
-          }
-        } catch (e) {
-          setStatus(e.message || 'Check failed.', 'err');
-          checkBtn.disabled = false;
         }
       });
 
@@ -193,7 +193,7 @@
         await navigator.clipboard.writeText(idInput.value);
         setStatus('Machine ID copied to clipboard.', 'ok');
         setTimeout(() => {
-          if (!checkBtn.disabled) setStatus('', '');
+          if (idInput.value) setStatus('Send this Machine ID to Developer Pac.', 'err');
         }, 2000);
       });
 

@@ -3,7 +3,7 @@
     "message": "Support has expired. Contact Developer Pac.",
     "contactMessage": "Contact Developer Pac to activate this device.",
     "users": {
-      "PASTE-MACHINE-UUID-HERE": {
+      "341357c4-ac2d-4030-8b57-0759a7e911c1": {
         "allowed": true,
         "name": "Client name (optional)"
       }
