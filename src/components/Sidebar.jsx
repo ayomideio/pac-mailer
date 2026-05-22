@@ -1,3 +1,5 @@
+import { APP_ICON } from '../constants/brand';
+
 const NAV = [
   { id: 'compose', label: 'Compose', icon: '✉️' },
   { id: 'settings', label: 'SMTP Settings', icon: '⚙️' },
@@ -9,7 +11,7 @@ export default function Sidebar({ active, onNavigate, developer }) {
   return (
     <aside className="sidebar">
       <div className="sidebar-brand">
-        <div className="sidebar-brand-icon">📬</div>
+        <img src={APP_ICON} alt="" className="sidebar-brand-icon" width={36} height={36} />
         <div>
           <h1>Pac Mailer</h1>
           <span>by {developer}</span>

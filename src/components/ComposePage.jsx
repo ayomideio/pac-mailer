@@ -49,7 +49,7 @@ export default function ComposePage({
       showToast('Message body cannot be empty.', 'error');
       return;
     }
-    await onSend({ profile: activeProfile, mail: draft, attachments });
+    await onSend({ profile: activeProfile, mail: { ...draft, format: 'plain' }, attachments });
     setAttachments([]);
   };
 
@@ -112,9 +112,10 @@ export default function ComposePage({
           <div className="form-grid">
             <div className="form-row">
               <label htmlFor="to">To *</label>
-              <input
+              <textarea
                 id="to"
-                type="text"
+                className="compose-recipients"
+                rows={3}
                 placeholder="recipient@example.com, another@example.com"
                 value={draft.to}
                 onChange={(e) => update('to', e.target.value)}
@@ -170,56 +171,15 @@ export default function ComposePage({
             </div>
 
             <div className="form-row">
-              <label>Format</label>
-              <div className="toggle-row">
-                <label>
-                  <input
-                    type="radio"
-                    name="format"
-                    checked={draft.format === 'plain'}
-                    onChange={() => update('format', 'plain')}
-                  />
-                  Plain text
-                </label>
-                <label>
-                  <input
-                    type="radio"
-                    name="format"
-                    checked={draft.format === 'html'}
-                    onChange={() => update('format', 'html')}
-                  />
-                  HTML
-                </label>
-              </div>
-            </div>
-
-            <div className="form-row">
-              <label htmlFor="body">{draft.format === 'html' ? 'HTML Body *' : 'Message *'}</label>
+              <label htmlFor="body">Message *</label>
               <textarea
                 id="body"
                 rows={12}
-                placeholder={
-                  draft.format === 'html'
-                    ? '<h1>Hello</h1><p>Your message here…</p>'
-                    : 'Write your message here…'
-                }
+                placeholder="Write your message here…"
                 value={draft.body}
                 onChange={(e) => update('body', e.target.value)}
               />
             </div>
-
-            {draft.format === 'html' && (
-              <div className="form-row">
-                <label htmlFor="altBody">Plain-text fallback</label>
-                <textarea
-                  id="altBody"
-                  rows={4}
-                  placeholder="Plain text version for non-HTML clients"
-                  value={draft.altBody}
-                  onChange={(e) => update('altBody', e.target.value)}
-                />
-              </div>
-            )}
 
             <div className="form-row">
               <label>Attachments</label>

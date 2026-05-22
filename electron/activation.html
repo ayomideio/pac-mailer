@@ -17,7 +17,13 @@
         padding: 28px;
       }
       .card { max-width: 440px; width: 100%; }
-      .icon { font-size: 40px; margin-bottom: 12px; }
+      .app-logo {
+        width: 56px;
+        height: 56px;
+        object-fit: contain;
+        margin-bottom: 12px;
+        border-radius: 12px;
+      }
       h1 { font-size: 20px; margin-bottom: 8px; }
       .sub {
         color: #8b93a7;
@@ -100,7 +106,7 @@
   </head>
   <body>
     <div class="card">
-      <div class="icon">📬</div>
+      <img src="icon.png" alt="" class="app-logo" width="56" height="56" />
       <h1>Activate Pac Mailer</h1>
       <p class="sub">
         Generate a Machine ID for this computer, then send it to

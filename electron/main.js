@@ -17,6 +17,15 @@ const store = new Store({
 });
 
 const isDev = !app.isPackaged;
+const APP_ICON_PATH = path.join(__dirname, 'icon.png');
+
+function windowIconOptions() {
+  if (fs.existsSync(APP_ICON_PATH)) {
+    return { icon: APP_ICON_PATH };
+  }
+  return {};
+}
+
 let mainWindow = null;
 let blockedWindow = null;
 let activationWindow = null;
@@ -45,6 +54,7 @@ function showActivationWindow() {
 
   activationWindow = new BrowserWindow({
     ...gateWindowOptions(500, 520),
+    ...windowIconOptions(),
   });
 
   activationWindow.loadFile(path.join(__dirname, 'activation.html'));
@@ -63,6 +73,7 @@ function showBlockedWindow(message, machineId) {
 
   blockedWindow = new BrowserWindow({
     ...gateWindowOptions(480, machineId ? 400 : 340),
+    ...windowIconOptions(),
   });
 
   const query = { m: message };
@@ -83,6 +94,7 @@ function createWindow() {
     minWidth: 900,
     minHeight: 600,
     title: 'Pac Mailer',
+    ...windowIconOptions(),
     backgroundColor: '#0f1117',
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
@@ -187,6 +199,10 @@ async function tryLaunchMainApp() {
 }
 
 app.whenReady().then(async () => {
+  if (process.platform === 'darwin' && fs.existsSync(APP_ICON_PATH)) {
+    app.dock?.setIcon(APP_ICON_PATH);
+  }
+
   await tryLaunchMainApp();
 
   app.on('activate', async () => {

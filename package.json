@@ -9,8 +9,10 @@
     "dev": "concurrently -k \"vite\" \"wait-on http://localhost:5173 && electron .\"",
     "build": "vite build",
     "start": "electron .",
-    "pack": "npm run build && electron-builder --dir",
-    "dist": "npm run build && electron-builder"
+    "icons:win": "node scripts/build-win-icon.mjs",
+    "pack": "npm run build && npm run icons:win && electron-builder --win --x64 --dir",
+    "dist": "npm run build && npm run icons:win && electron-builder --win --x64",
+    "dist:win": "npm run build && npm run icons:win && electron-builder --win --x64"
   },
   "build": {
     "appId": "com.developerpac.pacmailer",
@@ -18,21 +20,28 @@
     "directories": {
       "output": "release"
     },
+    "icon": "icon.png",
     "files": [
       "dist/**/*",
       "electron/**/*",
+      "icon.png",
       "package.json"
     ],
-    "mac": {
-      "category": "public.app-category.productivity",
-      "target": ["dmg", "zip"]
-    },
     "win": {
-      "target": ["nsis", "portable"]
+      "target": ["nsis"],
+      "icon": "build/icon.ico"
     },
-    "linux": {
-      "target": ["AppImage", "deb"],
-      "category": "Office"
+    "nsis": {
+      "oneClick": false,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": true,
+      "allowElevation": true,
+      "installerIcon": "build/icon.ico",
+      "uninstallerIcon": "build/icon.ico",
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "Pac Mailer",
+      "deleteAppDataOnUninstall": false
     }
   },
   "dependencies": {
@@ -44,6 +53,7 @@
     "concurrently": "^9.1.2",
     "electron": "^33.2.1",
     "electron-builder": "^25.1.8",
+    "png-to-ico": "^3.0.1",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "vite": "^6.0.3",

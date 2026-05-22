@@ -1,6 +1,7 @@
 node_modules/
 dist/
 release/
+build/icon.ico
 .DS_Store
 *.log
 .env

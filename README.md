@@ -34,16 +34,18 @@ OPEN_DEVTOOLS=1 npm run dev
 
 You can also toggle DevTools from the app with **View → Toggle Developer Tools** (macOS: **⌥⌘I**).
 
-## Production build
+## Production build (Windows installer)
 
 ```bash
 npm run build    # Build the React UI
-npm run start    # Run Electron with the built UI
+npm run start    # Run Electron with the built UI (local test)
 
-npm run dist     # Package installers (macOS .dmg, Windows .exe, Linux AppImage)
+npm run dist     # Windows NSIS installer (.exe setup wizard)
 ```
 
-Installers are written to the `release/` folder.
+Output: `release/Pac Mailer Setup 1.0.0.exe` — standard install wizard (choose folder, desktop shortcut, Start menu).
+
+**Note:** Building the Windows installer on macOS may require [Wine](https://www.winehq.org/) (`brew install wine-stable`). For best results, run `npm run dist` on a Windows PC or use CI.
 
 ## SMTP setup tips
 

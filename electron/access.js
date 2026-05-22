@@ -13,8 +13,13 @@ function isPlaceholderUrl(url) {
   return !url || url.includes('YOUR_GITHUB_USER');
 }
 
+function normalizeMachineId(machineId) {
+  return typeof machineId === 'string' ? machineId.trim().toLowerCase() : '';
+}
+
 function evaluateUserAccess(data, machineId) {
-  if (!machineId) {
+  const id = normalizeMachineId(machineId);
+  if (!id) {
     return {
       allowed: false,
       message: DEFAULT_CONTACT_MESSAGE,
@@ -23,7 +28,15 @@ function evaluateUserAccess(data, machineId) {
   }
 
   const users = data.users && typeof data.users === 'object' ? data.users : {};
-  const entry = users[machineId];
+  let entry = users[id] ?? users[machineId?.trim()];
+  if (!entry) {
+    for (const [key, value] of Object.entries(users)) {
+      if (key.trim().toLowerCase() === id) {
+        entry = value;
+        break;
+      }
+    }
+  }
 
   if (!entry) {
     return {
@@ -57,11 +70,12 @@ function evaluateUserAccess(data, machineId) {
 async function fetchRemoteConfig(url) {
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), 10000);
+  const bustUrl = url.includes('?') ? `${url}&t=${Date.now()}` : `${url}?t=${Date.now()}`;
 
   try {
-    const res = await fetch(url, {
+    const res = await fetch(bustUrl, {
       signal: controller.signal,
-      headers: { 'Cache-Control': 'no-cache', Accept: 'application/json' },
+      headers: { 'Cache-Control': 'no-cache', Pragma: 'no-cache', Accept: 'application/json' },
     });
     clearTimeout(timeout);
 
@@ -85,7 +99,7 @@ async function checkAccess(store, options = {}) {
     return { allowed: true, message: '', source: 'skipped', reason: 'skipped' };
   }
 
-  const machineId = options.machineId ?? null;
+  const machineId = normalizeMachineId(options.machineId) || options.machineId || null;
 
   if (!machineId) {
     return {
@@ -105,13 +119,14 @@ async function checkAccess(store, options = {}) {
     const cacheAge = cached?.checkedAt ? Date.now() - cached.checkedAt : Infinity;
     const cacheValid =
       cached &&
-      cached.machineId === machineId &&
-      cacheAge < OFFLINE_GRACE_MS;
+      normalizeMachineId(cached.machineId) === machineId &&
+      cacheAge < OFFLINE_GRACE_MS &&
+      cached.allowed === true;
 
     if (cacheValid) {
       return {
-        allowed: cached.allowed,
-        message: cached.message,
+        allowed: true,
+        message: '',
         source: 'cache',
         offline: true,
         reason: cached.reason,

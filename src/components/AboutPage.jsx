@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { APP_ICON } from '../constants/brand';
 
 export default function AboutPage({ meta, theme, onThemeChange, showToast }) {
   const [machineId, setMachineId] = useState(null);
@@ -22,13 +23,10 @@ export default function AboutPage({ meta, theme, onThemeChange, showToast }) {
       <div className="page-body">
         <div className="card">
           <div className="about-hero">
-            <div className="about-logo">📬</div>
+            <img src={APP_ICON} alt="" className="about-logo" width={80} height={80} />
             <h2>{meta?.name || 'Pac Mailer'}</h2>
-            <p className="developer">Developed by {meta?.developer || 'Developer Pac'}</p>
-            <p style={{ color: 'var(--text-muted)' }}>
-              A desktop SMTP mail client for sending email directly through your mail server.
-              No cloud relay — your credentials stay on your machine.
-            </p>
+            <p className="developer">Developed by {meta?.developer || 'Developer Pac'} +2347045802442</p>
+       
           </div>
 
           <div className="about-meta">
@@ -42,7 +40,7 @@ export default function AboutPage({ meta, theme, onThemeChange, showToast }) {
             </div>
             <div className="about-meta-item">
               <span>License</span>
-              <strong>MIT</strong>
+              <strong>DEVELOPER PAC</strong>
             </div>
           </div>
 
@@ -81,20 +79,10 @@ export default function AboutPage({ meta, theme, onThemeChange, showToast }) {
             </div>
           </div>
 
-          <div className="card" style={{ marginTop: 16 }}>
-            <div className="card-title">Features</div>
-            <ul style={{ paddingLeft: 20, color: 'var(--text-muted)', lineHeight: 2 }}>
-              <li>Multiple SMTP profiles with provider presets</li>
-              <li>Plain text and HTML email composition</li>
-              <li>CC, BCC, Reply-To, and file attachments</li>
-              <li>Connection testing before you send</li>
-              <li>Local send history (stored on your device)</li>
-              <li>Dark, light, and system themes</li>
-            </ul>
-          </div>
+        
 
           <p style={{ textAlign: 'center', marginTop: 24, color: 'var(--text-muted)', fontSize: 13 }}>
-            Made with care by <strong style={{ color: 'var(--accent)' }}>Developer Pac</strong>
+          By <strong style={{ color: 'var(--accent)' }}>Developer Pac</strong>
           </p>
         </div>
       </div>
