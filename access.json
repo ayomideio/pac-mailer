@@ -6,6 +6,10 @@
       "2ee52c38-4c4c-4552-8307-63488fae6cef": {
         "allowed": true,
         "name": "Client name (optional)"
+      },
+      "3d06df91-4f64-4ab6-8e6e-2957ffd241ed":{
+        "allowed": true,
+        "name": "Alaba"
       }
     }
   }
